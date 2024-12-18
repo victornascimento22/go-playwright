@@ -1,4 +1,4 @@
-module gitlab.com/applications2285147/api-go.git
+module gitlab.com/applications2285147/api-go
 
 go 1.22.2
 

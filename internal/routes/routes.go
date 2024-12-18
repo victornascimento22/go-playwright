@@ -1,13 +1,9 @@
 package routes
 
-import (
-"gitlab.com/applications2285147/api-go/internal"
+import "github.com/gin-gonic/gin"
 
-)
-func RegisterRoutes(router *gin.Engine){
-
-	router.GET("/health", func(c *gin.Context){
-		c.JSON(200, gin.H("status":"ok"))
+func RegisterRoutes(router *gin.Engine) {
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
 	})
 }
-
