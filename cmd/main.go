@@ -1,14 +1,7 @@
 package main
 
-import (
-	"github.com/gin-gonic/gin"
-	"gitlab.com/applications2285147/api-go/internal/routes"
-)
+import api "gitlab.com/applications2285147/api-go/api/router"
 
 func main() {
-	router := gin.Default()
-	routes.RegisterRoutes(router)
-
-	router.Run()
-
+	api.Router()
 }
