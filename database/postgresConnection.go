@@ -12,6 +12,12 @@ var DB *sql.DB
 
 func ConnectDatabase() (*sql.DB, error) {
 
+	err := godotenv.Load("/home/victor/api-go-ssh/api-go/.env")
+
+	if err != nil {
+		return nil, fmt.Errorf("error loading .env file: %v", err)
+	}
+
 	var (
 		DbHost     = os.Getenv("DB_HOST")
 		DbPort     = os.Getenv("DB_PORT")
@@ -19,12 +25,6 @@ func ConnectDatabase() (*sql.DB, error) {
 		DbPassword = os.Getenv("DB_PASSWORD")
 		DbName     = os.Getenv("DB_NAME")
 	)
-
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		return nil, fmt.Errorf("error loading .env file: %v", err)
-	}
 
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=disable",
