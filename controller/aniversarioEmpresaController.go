@@ -3,6 +3,7 @@ package controller
 
 import (
 	"database/sql"
+	"fmt"
 
 	"gitlab.com/applications2285147/api-go/internal/models"
 )
@@ -11,7 +12,7 @@ type AniversarioController struct {
 	db *sql.DB
 }
 
-func NewAniversarioController(db *sql.DB) *AniversarioController {
+func ConstructorAniversarioController(db *sql.DB) *AniversarioController {
 	return &AniversarioController{
 		db: db,
 	}
@@ -20,11 +21,10 @@ func NewAniversarioController(db *sql.DB) *AniversarioController {
 func (ac *AniversarioController) BuscarAniversariantesDoDia() ([]models.Aniversariantes, error) {
 	// Query para buscar aniversariantes do dia
 	query := `
-        SELECT id, nome, data_nascimento 
-        FROM aniversariantes 
-        WHERE EXTRACT(MONTH FROM data_nascimento) = EXTRACT(MONTH FROM CURRENT_DATE)
-        AND EXTRACT(DAY FROM data_nascimento) = EXTRACT(DAY FROM CURRENT_DATE)
-    `
+		SELECT *
+		FROM DADOS_FUNCIONARIOS
+		WHERE date_part('day', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('day', CURRENT_DATE)
+		AND date_part('month', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('month', CURRENT_DATE);`
 
 	rows, err := ac.db.Query(query)
 	if err != nil {
@@ -36,7 +36,8 @@ func (ac *AniversarioController) BuscarAniversariantesDoDia() ([]models.Aniversa
 
 	for rows.Next() {
 		var aniv models.Aniversariantes
-		err := rows.Scan(&aniv.ID, &aniv.Username, &aniv.Password)
+		err := rows.Scan(&aniv.Nome_cracha, &aniv.Aniversario_empresa, &aniv.Url_aniversario_empresa_tv)
+		fmt.Printf("Nome: %s\nAniversario empresa: %s\n URL: %s\n", aniv.Nome_cracha, aniv.Aniversario_empresa, aniv.Url_aniversario_empresa_tv)
 		if err != nil {
 			return nil, err
 		}
@@ -44,4 +45,5 @@ func (ac *AniversarioController) BuscarAniversariantesDoDia() ([]models.Aniversa
 	}
 
 	return aniversariantes, nil
+
 }

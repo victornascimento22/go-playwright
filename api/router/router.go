@@ -13,7 +13,7 @@ func Router(db *sql.DB) {
 
 	aniversario := r.Group("/aniversario")
 	{
-		aniversario.GET("/getAniversarios", handler.GetAniversariantesHandler())
+		aniversario.GET("/getAniversarios", handler.GetAniversariantesHandler)
 	}
 
 	r.Run(":8080")

@@ -13,7 +13,7 @@ func GetAniversariantesHandler(c *gin.Context) {
 	//Cria uma nova instância da struct AniversarioController
 	//Inicializa ela com as dependências necessárias (neste caso, a conexão com o banco)
 	//Retorna um ponteiro para essa nova instância
-	aniversarioController := controller.NewAniversarioController(database.DB)
+	aniversarioController := controller.ConstructorAniversarioController(database.DB)
 
 	aniversariantes, err := aniversarioController.BuscarAniversariantesDoDia()
 
