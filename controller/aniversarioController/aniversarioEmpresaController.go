@@ -20,8 +20,7 @@ func ConstructorAniversarioController(db *sql.DB) *AniversarioController {
 
 func (ac *AniversarioController) BuscarAniversariantesDoDia() ([]models.Aniversariantes, error) {
 	// Query para buscar aniversariantes do dia
-	query := `
-		SELECT *
+	query := `SELECT nome_cracha, aniversario_empresa, url_aniversario_empresa_tv
 		FROM DADOS_FUNCIONARIOS
 		WHERE date_part('day', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('day', CURRENT_DATE)
 		AND date_part('month', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('month', CURRENT_DATE);`

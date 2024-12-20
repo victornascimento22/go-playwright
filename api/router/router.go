@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/applications2285147/api-go/handler"
+	handler "gitlab.com/applications2285147/api-go/handler/aniversarioHandlers"
 )
 
 func Router(db *sql.DB) {
