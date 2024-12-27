@@ -8,12 +8,6 @@ import (
 	"github.com/Valgard/godotenv"
 )
 
-var db *sql.DB
-
-type IConnectDatabase interface {
-	ConnectDatabase() (*sql.DB, error)
-}
-
 func ConnectDatabase() (*sql.DB, error) {
 
 	err := godotenv.Load("/home/victor/api-go-ssh/api-go/.env")

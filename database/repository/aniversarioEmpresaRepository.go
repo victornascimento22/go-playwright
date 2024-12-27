@@ -2,30 +2,42 @@
 package repository
 
 import (
-	"database/sql"
 	"fmt"
 
+	"gitlab.com/applications2285147/api-go/database"
 	"gitlab.com/applications2285147/api-go/internal/models"
 )
 
-type AniversarioEmpresa struct {
-	db *sql.DB
+type IAniversariantesEmpresaRepository interface {
+	BuscarAniversariantesEmpresa() ([]models.Aniversariantes, error)
 }
 
-func ConstructorAniversarioEmpresa(db *sql.DB) *AniversarioEmpresa {
-	return &AniversarioEmpresa{
-		db: db,
+type IConnectDatabase struct {
+	database database.IConnectDatabase
+}
+
+func ConstructorConnectDatabase(i *IConnectDatabase) *IConnectDatabase {
+
+	return &IConnectDatabase{
+		database: i.database,
 	}
+
 }
 
-func (ac *AniversarioEmpresa) BuscarAniversariantesEmpresa() ([]models.Aniversariantes, error) {
+func (i *IConnectDatabase) BuscarAniversariantesEmpresa() ([]models.Aniversariantes, error) {
 	// Query para buscar aniversariantes do dia
 	query := `SELECT nome_cracha, aniversario_empresa, url_aniversario_empresa_tv
 		FROM DADOS_FUNCIONARIOS
 		WHERE date_part('day', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('day', CURRENT_DATE)
 		AND date_part('month', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('month', CURRENT_DATE);`
+	db, err := i.database.ConnectDatabase()
 
-	rows, err := ac.db.Query(query)
+	if err != nil {
+
+		panic("oi")
+	}
+
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
