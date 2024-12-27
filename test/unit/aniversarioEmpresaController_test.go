@@ -6,7 +6,7 @@ import (
 
 	_ "github.com/lib/pq"                // Certifique-se de importar o driver PostgreSQL
 	"github.com/stretchr/testify/assert" // Importando a biblioteca de asserções
-	"gitlab.com/applications2285147/api-go/controller"
+	controller "gitlab.com/applications2285147/api-go/controller/aniversarioController"
 	"gitlab.com/applications2285147/api-go/database"
 )
 
