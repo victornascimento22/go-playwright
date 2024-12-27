@@ -8,7 +8,7 @@ import (
 
 func GetAniversariantesEmpresaHandler(c *gin.Context) {
 
-	aniversariantes, err := controller.GetAniversarioEmpresaController()
+	aniversariantes, err := controller.GetAniversarioEmpresaController(db)
 	if err != nil {
 
 		c.JSON(404, gin.H{"error": "Nenhum valor encontrado" + err.Error()})

@@ -1,4 +1,4 @@
-// controller/aniversario_controller.go
+/
 package repository
 
 import (
@@ -8,24 +8,24 @@ import (
 	"gitlab.com/applications2285147/api-go/internal/models"
 )
 
-type AniversarioEmpresa struct {
+type repository struct {
 	db *sql.DB
 }
 
-func ConstructorAniversarioEmpresa(db *sql.DB) *AniversarioEmpresa {
-	return &AniversarioEmpresa{
+func NewAniversarioRepository(db *sql.DB) *AniversarioRepository {
+	return &AniversarioRepository{
 		db: db,
 	}
 }
 
-func (ac *AniversarioEmpresa) BuscarAniversariantesEmpresa() ([]models.Aniversariantes, error) {
+func (r *AniversarioRepository) BuscarAniversariantesEmpresa() ([]models.Aniversariantes, error) {
 	// Query para buscar aniversariantes do dia
 	query := `SELECT nome_cracha, aniversario_empresa, url_aniversario_empresa_tv
 		FROM DADOS_FUNCIONARIOS
 		WHERE date_part('day', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('day', CURRENT_DATE)
 		AND date_part('month', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('month', CURRENT_DATE);`
 
-	rows, err := ac.db.Query(query)
+	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +43,6 @@ func (ac *AniversarioEmpresa) BuscarAniversariantesEmpresa() ([]models.Aniversar
 		aniversariantes = append(aniversariantes, aniv)
 	}
 
-	return aniversariantes, nil
+	return []aniversariantes, nil
 
 }
