@@ -33,7 +33,6 @@ func (i *IConnectDatabase) BuscarAniversariantesEmpresa() ([]models.Aniversarian
 	db, err := i.infrastructure.ConnectDatabase()
 
 	if err != nil {
-
 		panic("oi")
 	}
 
