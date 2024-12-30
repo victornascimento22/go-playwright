@@ -1,4 +1,4 @@
-package database
+package infra
 
 import (
 	"database/sql"
@@ -8,10 +8,18 @@ import (
 	"github.com/Valgard/godotenv"
 )
 
-func ConnectDatabase() (*sql.DB, error) {
+type IConnectDatabase interface {
+	ConnectDatabase() (*sql.DB, error)
+}
 
+type Database struct{}
+
+func ConstructorConnectDatabase() IConnectDatabase {
+	return &Database{}
+}
+
+func (d *Database) ConnectDatabase() (*sql.DB, error) {
 	err := godotenv.Load("/home/victor/api-go-ssh/api-go/.env")
-
 	if err != nil {
 		return nil, fmt.Errorf("error loading .env file: %v", err)
 	}

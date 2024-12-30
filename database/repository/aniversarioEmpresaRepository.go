@@ -4,7 +4,7 @@ package repository
 import (
 	"fmt"
 
-	"gitlab.com/applications2285147/api-go/database"
+	infra "gitlab.com/applications2285147/api-go/infrastructure"
 	"gitlab.com/applications2285147/api-go/internal/models"
 )
 
@@ -13,13 +13,13 @@ type IAniversariantesEmpresaRepository interface {
 }
 
 type IConnectDatabase struct {
-	database database.IConnectDatabase
+	infrastructure infra.IConnectDatabase
 }
 
-func ConstructorConnectDatabase(i *IConnectDatabase) *IConnectDatabase {
+func ConstructorConnectDatabase(i infra.IConnectDatabase) *IConnectDatabase {
 
 	return &IConnectDatabase{
-		database: i.database,
+		infrastructure: i,
 	}
 
 }
@@ -30,7 +30,7 @@ func (i *IConnectDatabase) BuscarAniversariantesEmpresa() ([]models.Aniversarian
 		FROM DADOS_FUNCIONARIOS
 		WHERE date_part('day', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('day', CURRENT_DATE)
 		AND date_part('month', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('month', CURRENT_DATE);`
-	db, err := i.database.ConnectDatabase()
+	db, err := i.infrastructure.ConnectDatabase()
 
 	if err != nil {
 
