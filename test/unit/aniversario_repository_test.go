@@ -63,12 +63,12 @@ func TestBuscarAniversariantesEmpresaHoje(t *testing.T) {
 	// Assert the first returned record matches the expected mock data.
 	assert.Equal(t, "João", aniversariantes[0].NomeCracha)
 	assert.Equal(t, today, aniversariantes[0].AniversarioEmpresa)
-	assert.Equal(t, "http://example.com/joao", aniversariantes[0].UrlAniversarioEmpresaTv)
+	assert.Equal(t, "http://example.com/joao", aniversariantes[0].URLAniversarioEmpresaTv)
 
 	// Assert the second returned record matches the expected mock data.
 	assert.Equal(t, "Maria", aniversariantes[1].NomeCracha)
 	assert.Equal(t, today, aniversariantes[1].AniversarioEmpresa)
-	assert.Equal(t, "http://example.com/maria", aniversariantes[1].UrlAniversarioEmpresaTv)
+	assert.Equal(t, "http://example.com/maria", aniversariantes[1].URLAniversarioEmpresaTv)
 
 	// Verify that all expectations for the mock were met.
 	err = mock.ExpectationsWereMet()
