@@ -17,8 +17,8 @@ type Aniversariantes struct {
 	AniversarioVida         time.Time `json:"aniversario_vida"`           // Life birthday of the employee.
 	AniversarioEmpresa      string    `json:"aniversario_empresa"`        // Work anniversary date as a string.
 	Email                   string    `json:"email"`                      // Employee's email.
-	UrlAniversarioVidaTv    string    `json:"url_aniversario_vida_tv"`    // URL for life birthday display.
-	UrlAniversarioEmpresaTv string    `json:"url_aniversario_empresa_tv"` // URL for work anniversary display.
+	URLAniversarioVidaTv    string    `json:"url_aniversario_vida_tv"`    // URL for life birthday display.
+	URLAniversarioEmpresaTv string    `json:"url_aniversario_empresa_tv"` // URL for work anniversary display.
 }
 
 // FormatDate converts the AniversarioEmpresa field, which is stored as a string,
