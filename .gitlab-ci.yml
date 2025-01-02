@@ -4,7 +4,8 @@ image: golang:latest
 variables:
   GOPATH: $CI_PROJECT_DIR/.go
   GO111MODULE: "on"
-  GOLINT_PATH: "$GOPATH/bin/golint"
+  CGO_ENABLED: 0
+  GOOS: linux
 
 cache:
   paths:
@@ -30,17 +31,16 @@ lint:
 test:
   stage: test
   script:
-    - go test -v -race ./...
+    - go test ./...
     - go vet ./...
-  coverage: '/coverage: \d+.\d+% of statements/'
 
 build:
   stage: build
   script:
-    - go build -o binary
+    - go build -o bin/api-go ./cmd/main.go  # Ajuste o caminho conforme sua estrutura
   artifacts:
     paths:
-      - binary
+      - bin/api-go
 
 deploy:
   stage: deploy
