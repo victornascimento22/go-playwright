@@ -1,0 +1,6 @@
+build:
+  script:
+    - ls -ltra
+    - pwd
+    - whomai
+    
