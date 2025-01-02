@@ -17,7 +17,6 @@ type IConnectDatabase struct {
 }
 
 func ConstructorConnectDatabase(i infra.IConnectDatabase) *IConnectDatabase {
-
 	return &IConnectDatabase{
 		infrastructure: i,
 	}

@@ -1,33 +1,28 @@
 package controller
 
 import (
-	"gitlab.com/applications2285147/api-go/database/repository"
 	"gitlab.com/applications2285147/api-go/internal/models"
+	"gitlab.com/applications2285147/api-go/services"
 )
 
 type IAniversarioEmpresaController interface {
 	GetAniversarioEmpresaController() ([]models.Aniversariantes, error)
 }
 
-type IAniversariantesEmpresaRepository struct {
-	repository repository.IAniversariantesEmpresaRepository
+type IAniversarioEmpresaServices struct {
+	services services.IAniversarioEmpresaServices
 }
 
-func ConstructorIAniversarianteEmpresaRepository(rep repository.IAniversariantesEmpresaRepository) *IAniversariantesEmpresaRepository {
-	return &IAniversariantesEmpresaRepository{
-		repository: rep,
+func ConstructorIAniversarianteEmpresaServices(services services.IAniversarioEmpresaServices) *IAniversarioEmpresaServices {
+	return &IAniversarioEmpresaServices{
+		services: services,
 	}
-
 }
 
-func (x *IAniversariantesEmpresaRepository) GetAniversarioEmpresaController() ([]models.Aniversariantes, error) {
-
-	repo, err := x.repository.BuscarAniversariantesEmpresa()
-
+func (x *IAniversarioEmpresaServices) GetAniversarioEmpresaController() ([]models.Aniversariantes, error) {
+	aniversariantes, err := x.services.GetAniversariantesEmpresaService()
 	if err != nil {
 		panic("OI")
 	}
-
-	return repo, err
-
+	return aniversariantes, err
 }
