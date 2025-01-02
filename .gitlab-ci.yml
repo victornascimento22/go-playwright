@@ -1,15 +1,47 @@
+# .gitlab-ci.yml
+image: golang:latest
+
 variables:
-  GOLANGCI_LINT_VERSION: 'v1.56.2'
+  GOPATH: $CI_PROJECT_DIR/.go
+
+cache:
+  paths:
+    - .go/pkg/mod/
+
+stages:
+  - test
+  - build
+  - deploy
+
+before_script:
+  - mkdir -p .go
+  - go mod download
+
 lint:
-  image: golangci/golangci-lint:$GOLANGCI_LINT_VERSION
   stage: test
   script:
-    # Write the code coverage report to gl-code-quality-report.json
-    # and print linting issues to stdout in the format: path/to/file:line description
-    # remove `--issues-exit-code 0` or set to non-zero to fail the job if linting issues are detected
-    - golangci-lint run --issues-exit-code 0 --print-issued-lines=false --out-format code-climate:gl-code-quality-report.json,line-number
+    - go install golang.org/x/lint/golint@latest
+    - golint -set_exit_status ./...
+
+test:
+  stage: test
+  script:
+    - go test -v -race ./...
+    - go vet ./...
+  coverage: '/coverage: \d+.\d+% of statements/'
+
+build:
+  stage: build
+  script:
+    - go build -o binary
   artifacts:
-    reports:
-      codequality: gl-code-quality-report.json
     paths:
-      - gl-code-quality-report.json
+      - binary
+
+deploy:
+  stage: deploy
+  script:
+    - echo "Deploy to production server"
+  only:
+    - main
+  when: manual
