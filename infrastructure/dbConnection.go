@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Valgard/godotenv"
+	"github.com/joho/godotenv"
 )
 
 // IConnectDatabase defines an interface for connecting to a database.
