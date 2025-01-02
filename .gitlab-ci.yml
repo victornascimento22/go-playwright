@@ -1,5 +1,5 @@
 # .gitlab-ci.yml
-image: golang:latest
+image: golang:1.22.2
 
 variables:
   GOPATH: $CI_PROJECT_DIR/.go
@@ -29,14 +29,12 @@ verify:
   script:
     - go install golang.org/x/lint/golint@latest
     - $GOPATH/bin/golint -set_exit_status ./...
-    - go vet -v ./...
-    # Verifica se o código compila
-    - go build -v ./...
+    - go vet ./...
+    - go build ./...
 
 unit-tests:
   stage: test
   script:
-    # Mostra mais detalhes sobre os erros de compilação
     - go test -v ./... 2>&1 | tee test_output.log
   artifacts:
     when: always
