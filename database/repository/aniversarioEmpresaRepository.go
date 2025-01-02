@@ -63,12 +63,12 @@ func (i *IConnectDatabase) BuscarAniversariantesEmpresa() ([]models.Aniversarian
 	// Iterate through the result set and populate the slice.
 	for rows.Next() {
 		var aniv models.Aniversariantes
-		// Map the row data to the Aniversariantes struct.
-		err := rows.Scan(&aniv.Nome_cracha, &aniv.Aniversario_empresa, &aniv.Url_aniversario_empresa_tv)
+		// Ensure the field names match the struct definition
+		err := rows.Scan(&aniv.NomeCracha, &aniv.AniversarioEmpresa, &aniv.UrlAniversarioEmpresaTv)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
-		fmt.Printf("Nome: %s\nAniversario empresa: %s\n URL: %s\n", aniv.Nome_cracha, aniv.Aniversario_empresa, aniv.Url_aniversario_empresa_tv)
+		fmt.Printf("Nome: %s\nAniversario empresa: %s\n URL: %s\n", aniv.NomeCracha, aniv.AniversarioEmpresa, aniv.UrlAniversarioEmpresaTv)
 		aniversariantes = append(aniversariantes, aniv)
 	}
 
