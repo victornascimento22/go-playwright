@@ -40,7 +40,7 @@ func TestBuscarAniversariantesEmpresaHoje(t *testing.T) {
 	mockInfrastructure.On("ConnectDatabase").Return(db, nil) // Define behavior for ConnectDatabase.
 
 	// Initialize the repository with the mocked infrastructure.
-	repository := repository.ConstructorConnectDatabase(mockInfrastructure)
+	repository := repository.ConstructorAniversariantesEmpresaConnectionDatabase(mockInfrastructure)
 
 	// Define the expected SQL query behavior, including mock data for today's anniversaries.
 	rows := sqlmock.NewRows([]string{"nome_cracha", "aniversario_empresa", "url_aniversario_empresa_tv"}).

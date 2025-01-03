@@ -5,6 +5,7 @@ import (
 	api "gitlab.com/applications2285147/api-go/api/router"                              // Import the router package for API routing.
 	controller "gitlab.com/applications2285147/api-go/controller/aniversarioController" // Import the controller package.
 	"gitlab.com/applications2285147/api-go/database/repository"                         // Import the repository package for database interaction.
+	"gitlab.com/applications2285147/api-go/handlers"                                    // Import the handlers package for business logic.
 	infra "gitlab.com/applications2285147/api-go/infrastructure"                        // Import the infrastructure package for database connection setup.
 	"gitlab.com/applications2285147/api-go/services"                                    // Import the services package for business logic.
 )
@@ -18,21 +19,26 @@ func main() {
 
 	// Step 2: Create the repository instance, passing the database connection.
 	// This repository is responsible for executing SQL queries and handling database logic.
-	repo := repository.ConstructorConnectDatabase(database)
-
+	repoAniversarioVida := repository.ConstructorAniversariantesVidaConnectionDatabase(database)
+	repoAniversarioEmpresa := repository.ConstructorAniversariantesEmpresaConnectionDatabase(database)
 	// Step 3: Create the service layer for the aniversarioEmpresa functionality.
 	// The service layer provides business logic and integrates with the repository.
-	aniversarioEmpresaService := services.ConstructorIAniversarioEmpresaRepositorys(repo)
+	aniversarioVidaService := services.ConstructorAniversariantesVidaRepositorys(repoAniversarioVida)
+	aniversarioEmpresaService := services.ConstructorIAniversarioEmpresaRepositorys(repoAniversarioEmpresa)
 
-	// Step 4: Create the controller layer.
-	// The controller manages the interaction between the service layer and the HTTP router.
-	ctrl := controller.ConstructorIAniversarianteEmpresaServices(aniversarioEmpresaService)
+	// Step 4: Create the controllers
+	ctrlEmpresa := controller.ConstructorIAniversarianteEmpresaServices(aniversarioEmpresaService)
+	ctrlVida := controller.ConstructorAniversariantesVidaServices(aniversarioVidaService)
 
-	// Step 5: Initialize the router with the controller.
-	// The router sets up HTTP routes and handles incoming API requests.
-	router := api.ConstructorGetAniversarioEmpresaController(ctrl)
+	// Step 5: Create the handlers
+	handlerEmpresa := handlers.ConstructorGetAniversarioEmpresaController(ctrlEmpresa)
+	handlerVida := handlers.ConstructorAniversariantesVidaController(ctrlVida)
+
+	// Step 6: Initialize the router with the handlers
+	router := api.ConstructorAniversariantesHandler(handlerEmpresa, handlerVida)
 
 	// Start the HTTP server and listen for incoming requests.
 	// The nil argument indicates no explicit database instance is passed to the router.
 	router.Router(nil)
+
 }

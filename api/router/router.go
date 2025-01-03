@@ -3,29 +3,32 @@ package api
 
 import (
 	"database/sql"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
-	controller "gitlab.com/applications2285147/api-go/controller/aniversarioController"
+	handler "gitlab.com/applications2285147/api-go/handlers"
 )
 
 // IAniversariantesEmpresaController encapsulates the controller logic for handling anniversary-related requests.
-type IAniversariantesEmpresaController struct {
-	controller controller.IAniversarioEmpresaController // Interface for the business logic layer.
+
+type IAniversariantesHandler struct {
+	empresaHandler handler.IAniversariantesEmpresaHandler
+	vidaHandler    handler.IAniversariantesVidaHandler
 }
 
 // ConstructorGetAniversarioEmpresaController initializes the controller structure.
 // ctrl: An implementation of IAniversarioEmpresaController.
 // Returns an instance of IAniversariantesEmpresaController.
-func ConstructorGetAniversarioEmpresaController(ctrl controller.IAniversarioEmpresaController) *IAniversariantesEmpresaController {
-	return &IAniversariantesEmpresaController{
-		controller: ctrl,
+func ConstructorAniversariantesHandler(handEmpresa handler.IAniversariantesEmpresaHandler,
+	handVida handler.IAniversariantesVidaHandler) *IAniversariantesHandler {
+	return &IAniversariantesHandler{
+		empresaHandler: handEmpresa,
+		vidaHandler:    handVida,
 	}
 }
 
 // Router sets up the HTTP routes for the anniversary-related endpoints.
 // db: Database connection used by the application.
-func (x *IAniversariantesEmpresaController) Router(db *sql.DB) {
+func (x *IAniversariantesHandler) Router(db *sql.DB) {
 	// Initialize the Gin router.
 	r := gin.Default()
 
@@ -34,15 +37,12 @@ func (x *IAniversariantesEmpresaController) Router(db *sql.DB) {
 	{
 		// Define a GET endpoint to retrieve employee anniversaries.
 		aniversario.GET("/getAniversariosEmpresa", func(c *gin.Context) {
-			// Call the controller to fetch anniversary data.
-			aniversariantes, err := x.controller.GetAniversarioEmpresaController()
-			if err != nil {
-				// Respond with a 500 Internal Server Error if fetching data fails.
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-			// Respond with a 200 OK status and the data if fetching is successful.
-			c.JSON(http.StatusOK, aniversariantes)
+			// Chama o handler diretamente, sem tentar capturar retornos
+			x.empresaHandler.GetAniversariantesEmpresaHandler(c)
+		})
+
+		aniversario.GET("/getAniversariosVida", func(c *gin.Context) {
+			x.vidaHandler.GetAniversariantesVidaHandler(c)
 		})
 	}
 

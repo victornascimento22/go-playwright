@@ -1,10 +1,14 @@
 // Package handler provides HTTP handlers for managing API endpoints.
-package handler
+package handlers
 
 import (
 	"github.com/gin-gonic/gin"
 	controller "gitlab.com/applications2285147/api-go/controller/aniversarioController"
 )
+
+type IAniversariantesEmpresaHandler interface {
+	GetAniversariantesEmpresaHandler(c *gin.Context)
+}
 
 // IAniversariantesEmpresaController encapsulates the logic for handling anniversary-related requests.
 type IAniversariantesEmpresaController struct {
@@ -23,7 +27,7 @@ func ConstructorGetAniversarioEmpresaController(ctrl controller.IAniversarioEmpr
 
 // Handler processes HTTP requests for retrieving employee anniversaries.
 // c: the Gin context for the HTTP request.
-func (h *IAniversariantesEmpresaController) Handler(c *gin.Context) {
+func (h *IAniversariantesEmpresaController) GetAniversariantesEmpresaHandler(c *gin.Context) {
 	// Call the controller to fetch anniversaries.
 	aniversariantes, err := h.controller.GetAniversarioEmpresaController()
 

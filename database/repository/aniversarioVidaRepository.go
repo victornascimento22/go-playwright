@@ -1,4 +1,3 @@
-// Package repository handles database operations and data access.
 package repository
 
 import (
@@ -8,39 +7,34 @@ import (
 	"gitlab.com/applications2285147/api-go/internal/models"
 )
 
-// IAniversariantesEmpresaRepository defines an interface for fetching employees' anniversaries.
-type IAniversariantesEmpresaRepository interface {
-	// BuscarAniversariantesEmpresa retrieves a list of employees celebrating their work anniversary.
-	BuscarAniversariantesEmpresa() ([]models.Aniversariantes, error)
+type IAniversariantesVidaRepository interface {
+	GetAniversariantesVidaRepository() ([]models.Aniversariantes, error)
 }
 
-// EmpresaDatabase encapsulates the database connection logic.
-type IAniversariantesEmpresaConnectionDatabase struct {
+type IAniversariantesVidaConnectionDatabase struct {
 	// infrastructure provides the methods to connect to the database.
 	infrastructure infra.IConnectDatabase
 }
 
-// NewEmpresaDatabase initializes a new instance of EmpresaDatabase.
+// ConstructorConnectDatabase initializes a new instance of IConnectDatabase.
 // i: an implementation of the IConnectDatabase interface.
-// Returns a pointer to an EmpresaDatabase instance.
-func ConstructorAniversariantesEmpresaConnectionDatabase(i infra.IConnectDatabase) *IAniversariantesEmpresaConnectionDatabase {
-	return &IAniversariantesEmpresaConnectionDatabase{
+// Returns a pointer to an IConnectDatabase instance.
+func ConstructorAniversariantesVidaConnectionDatabase(i infra.IConnectDatabase) *IAniversariantesVidaConnectionDatabase {
+	return &IAniversariantesVidaConnectionDatabase{
 		infrastructure: i,
 	}
 }
 
-// BuscarAniversariantesEmpresa retrieves a list of employees celebrating their work anniversary.
-// It queries the database for employees whose work anniversary matches the current date.
-// Returns a slice of Aniversariantes and an error, if any.
-func (e *IAniversariantesEmpresaConnectionDatabase) BuscarAniversariantesEmpresa() ([]models.Aniversariantes, error) {
+func (v *IAniversariantesVidaConnectionDatabase) GetAniversariantesVidaRepository() ([]models.Aniversariantes, error) {
+
 	// SQL query to fetch employees celebrating their work anniversary today.
 	query := `SELECT nome_cracha, aniversario_empresa, url_aniversario_empresa_tv
 		FROM DADOS_FUNCIONARIOS
-		WHERE date_part('day', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('day', CURRENT_DATE)
-		AND date_part('month', to_date(aniversario_empresa, 'DD/MM/YYYY')) = date_part('month', CURRENT_DATE);`
+		WHERE date_part('day', to_date(aniversario_vida, 'DD/MM/YYYY')) = date_part('day', CURRENT_DATE)
+		AND date_part('month', to_date(aniversario_vida, 'DD/MM/YYYY')) = date_part('month', CURRENT_DATE);`
 
 	// Establish a connection to the database.
-	db, err := e.infrastructure.ConnectDatabase()
+	db, err := v.infrastructure.ConnectDatabase()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the database: %w", err)
 	}
@@ -74,4 +68,5 @@ func (e *IAniversariantesEmpresaConnectionDatabase) BuscarAniversariantesEmpresa
 
 	// Return the list of employees and no error.
 	return aniversariantes, nil
+
 }
