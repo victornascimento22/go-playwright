@@ -1,0 +1,48 @@
+from playwright.async_api import async_playwright
+import io
+from PIL import Image
+
+async def capture_screenshot(url, source='manual'):
+    if source == 'manual':
+        return await capture_screenshot_pbi(url)
+    else:
+        return await capture_screenshot_generic(url)
+
+async def capture_screenshot_generic(url):
+    async with async_playwright() as p:
+        browser = await p.firefox.launch(headless=True)
+        page = await browser.new_page()
+        await page.set_viewport_size({'width': 1920, 'height': 1080})
+        await page.goto(url)
+        await page.wait_for_timeout(15000)
+        image_data = await page.screenshot(full_page=True)
+        await browser.close()
+        return image_data
+
+async def capture_screenshot_pbi(url):
+    async with async_playwright() as p:
+        browser = await p.firefox.launch(headless=True)
+        page = await browser.new_page()
+        await page.set_viewport_size({'width': 1920, 'height': 1080, 'deviceScaleFactor': 4})
+        await page.goto(url)
+        await page.wait_for_timeout(15000)
+        await page.evaluate('''() => {
+            document.querySelector("#reportLandingContainer > div > exploration-container > div > div > docking-container > div > pbi-status-bar > section").style.display = "none";
+        }''')
+        await page.evaluate('''() => {
+            document.querySelector("#embedWrapperID > div.logoBarWrapper > logo-bar > div > div").style.display = "none";
+        }''')
+        await page.wait_for_timeout(2000)
+        image_data = await page.screenshot(full_page=True)
+        await browser.close()
+        
+        image = Image.open(io.BytesIO(image_data))
+        width, height = image.size
+        left = 50
+        top = 0
+        right = width - 50
+        bottom = height - 20
+        cropped_image = image.crop((left, top, right, bottom))
+        output = io.BytesIO()
+        cropped_image.save(output, format='PNG')
+        return output.getvalue()

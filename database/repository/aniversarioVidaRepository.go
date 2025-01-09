@@ -28,7 +28,9 @@ func ConstructorAniversariantesVidaConnectionDatabase(i infra.IConnectDatabase) 
 func (v *IAniversariantesVidaConnectionDatabase) GetAniversariantesVidaRepository() ([]models.Aniversariantes, error) {
 
 	// SQL query to fetch employees celebrating their work anniversary today.
-	query := `SELECT nome_cracha, aniversario_empresa, url_aniversario_empresa_tv
+	query := `SELECT nome_cracha, 
+	TO_TIMESTAMP(aniversario_vida, 'DD/MM/YYYY') as aniversario_vida,
+	 url_aniversario_vida_tv
 		FROM DADOS_FUNCIONARIOS
 		WHERE date_part('day', to_date(aniversario_vida, 'DD/MM/YYYY')) = date_part('day', CURRENT_DATE)
 		AND date_part('month', to_date(aniversario_vida, 'DD/MM/YYYY')) = date_part('month', CURRENT_DATE);`
@@ -58,11 +60,11 @@ func (v *IAniversariantesVidaConnectionDatabase) GetAniversariantesVidaRepositor
 	for rows.Next() {
 		var aniv models.Aniversariantes
 		// Ensure the field names match the struct definition
-		err := rows.Scan(&aniv.NomeCracha, &aniv.AniversarioEmpresa, &aniv.URLAniversarioEmpresaTv)
+		err := rows.Scan(&aniv.NomeCracha, &aniv.AniversarioVida, &aniv.URLAniversarioVidaTv)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
-		fmt.Printf("Nome: %s\nAniversario empresa: %s\n URL: %s\n", aniv.NomeCracha, aniv.AniversarioEmpresa, aniv.URLAniversarioEmpresaTv)
+		fmt.Printf("Nome: %s\nAniversario empresa: %s\n URL: %s\n", aniv.NomeCracha, aniv.AniversarioVida, aniv.URLAniversarioVidaTv)
 		aniversariantes = append(aniversariantes, aniv)
 	}
 

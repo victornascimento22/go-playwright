@@ -29,7 +29,7 @@ func ConstructorConnectDatabase() IConnectDatabase {
 // Returns a pointer to the database handle or an error if the connection fails.
 func (d *Database) ConnectDatabase() (*sql.DB, error) {
 	// Load environment variables from the .env file.
-	err := godotenv.Load("/home/victor/api-go-ssh/api-go/.env")
+	err := godotenv.Load("/home/loadt/api-go/.env")
 	if err != nil {
 		return nil, fmt.Errorf("error loading .env file: %v", err)
 	}

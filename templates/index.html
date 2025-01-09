@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gerenciador de TVs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .display-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .display-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .url-list {
+            margin-bottom: 15px;
+        }
+        .url-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .url-item input {
+            flex: 1;
+        }
+        .source-select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            min-width: 120px;
+        }
+        .btn-add {
+            background-color: #2196F3;
+            padding: 5px 15px;
+            margin-bottom: 15px;
+        }
+        .btn-remove {
+            background-color: #f44336;
+            padding: 8px;
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gerenciador de TVs</h1>
+    <div class="display-grid">
+        <!-- TV 1 -->
+        <div class="display-card">
+            <h3>TV Operação 1</h3>
+            <!-- Lista de URLs -->
+            <div class="form-group">
+                <label>URLs dos Dashboards:</label>
+                <div id="urlList1" class="url-list">
+                    <div class="url-item">
+                        <input type="text" placeholder="https://seu-dashboard.com" class="url-input">
+                        <select class="source-select">
+                            <option value="generic">Generic</option>
+                            <option value="pbi">Power BI</option>
+                        </select>
+                        <button class="btn-remove" onclick="removeUrl(this)">×</button>
+                    </div>
+                </div>
+                <button class="btn-add" onclick="addUrl('1')">+ Adicionar URL</button>
+            </div>
+            <!-- Tempo de Transição -->
+            <div class="form-group">
+                <label>Tempo de Transição (segundos):</label>
+                <input type="number" id="transitionTime1" value="15" min="1">
+            </div>
+            <!-- IP do Raspberry -->
+            <div class="form-group">
+                <label>IP do Raspberry:</label>
+                <input type="text" id="ip1" value="localhost">
+            </div>
+            <button onclick="updateDisplay('1')">Atualizar TV</button>
+            <div id="status1" class="status"></div>
+        </div>
+
+        <!-- TV 2 -->
+        <div class="display-card">
+            <h3>TV Operação 2</h3>
+            <!-- Lista de URLs -->
+            <div class="form-group">
+                <label>URLs dos Dashboards:</label>
+                <div id="urlList2" class="url-list">
+                    <div class="url-item">
+                        <input type="text" placeholder="https://seu-dashboard.com" class="url-input">
+                        <select class="source-select">
+                            <option value="generic">Generic</option>
+                            <option value="pbi">Power BI</option>
+                        </select>
+                        <button class="btn-remove" onclick="removeUrl(this)">×</button>
+                    </div>
+                </div>
+                <button class="btn-add" onclick="addUrl('2')">+ Adicionar URL</button>
+            </div>
+            <div class="form-group">
+                <label>Tempo de Transição (segundos):</label>
+                <input type="number" id="transitionTime2" value="15" min="1">
+            </div>
+            <div class="form-group">
+                <label>IP do Raspberry:</label>
+                <input type="text" id="ip2" value="192.168.1.102">
+            </div>
+            <button onclick="updateDisplay('2')">Atualizar TV</button>
+            <div id="status2" class="status"></div>
+        </div>
+    </div>
+
+    <script>
+        function addUrl(id) {
+            const urlList = document.getElementById(`urlList${id}`);
+            const urlItem = document.createElement('div');
+            urlItem.className = 'url-item';
+            urlItem.innerHTML = `
+                <input type="text" placeholder="https://seu-dashboard.com" class="url-input">
+                <select class="source-select">
+                    <option value="generic">Generic</option>
+                    <option value="pbi">Power BI</option>
+                </select>
+                <button class="btn-remove" onclick="removeUrl(this)">×</button>
+            `;
+            urlList.appendChild(urlItem);
+        }
+
+        function removeUrl(button) {
+            const urlItem = button.parentElement;
+            if (urlItem.parentElement.children.length > 1) {
+                urlItem.remove();
+            }
+        }
+
+        async function updateDisplay(id) {
+            const urlItems = document.querySelectorAll(`#urlList${id} .url-item`);
+            const urls = Array.from(urlItems).map(item => ({
+                url: item.querySelector('.url-input').value.trim(),
+                source: item.querySelector('.source-select').value
+            })).filter(item => item.url);
+            
+            const transitionTime = parseInt(document.getElementById(`transitionTime${id}`).value);
+            const ip = document.getElementById(`ip${id}`).value;
+            const statusDiv = document.getElementById(`status${id}`);
+
+            if (urls.length === 0) {
+                showStatus(statusDiv, 'Adicione pelo menos uma URL', false);
+                return;
+            }
+
+            if (!ip) {
+                showStatus(statusDiv, 'Informe o IP do Raspberry', false);
+                return;
+            }
+
+            try {
+                const response = await fetch('/screenshots/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        urls: urls,
+                        transition_time: transitionTime,
+                        raspberry_ip: ip
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro ao atualizar display');
+                }
+
+                showStatus(statusDiv, 'TV atualizada com sucesso!', true);
+            } catch (error) {
+                showStatus(statusDiv, `Erro: ${error.message}`, false);
+            }
+        }
+
+        function showStatus(element, message, isSuccess) {
+            element.textContent = message;
+            element.style.display = 'block';
+            element.className = `status ${isSuccess ? 'success' : 'error'}`;
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 

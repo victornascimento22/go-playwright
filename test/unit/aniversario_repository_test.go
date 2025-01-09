@@ -13,13 +13,13 @@ import (
 )
 
 // MockInfrastructure is a mocked implementation of the infrastructure interface used to connect to the database.
-type MockInfrastructure struct {
+type MockEmpresaInfrastructure struct {
 	mock.Mock
 }
 
 // ConnectDatabase mocks the database connection method.
 // Returns a mocked *sql.DB instance and an error.
-func (m *MockInfrastructure) ConnectDatabase() (*sql.DB, error) {
+func (m *MockEmpresaInfrastructure) ConnectDatabase() (*sql.DB, error) {
 	args := m.Called()
 	return args.Get(0).(*sql.DB), args.Error(1)
 }
@@ -36,7 +36,7 @@ func TestBuscarAniversariantesEmpresaHoje(t *testing.T) {
 	}
 
 	// Create a mock infrastructure for the database connection.
-	mockInfrastructure := new(MockInfrastructure)
+	mockInfrastructure := new(MockEmpresaInfrastructure)
 	mockInfrastructure.On("ConnectDatabase").Return(db, nil) // Define behavior for ConnectDatabase.
 
 	// Initialize the repository with the mocked infrastructure.

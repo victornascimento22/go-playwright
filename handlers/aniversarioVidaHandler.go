@@ -22,13 +22,13 @@ func (h *AniversariantesVidaController) GetAniversariantesVidaHandler(c *gin.Con
 	aniversariantes, err := h.controller.GetAniversariantesVidaController()
 	if err != nil {
 		// Respond with a 500 status code and an error message if an error occurs.
-		c.JSON(500, gin.H{"error": "Erro ao buscar aniversariantes: " + err.Error()})
+		c.JSON(500, gin.H{"error": "Erro ao buscar aniversariantes de vida: " + err.Error()})
 		return
 	}
 
 	if len(aniversariantes) == 0 {
 		// Respond with a 204 status code if no anniversaries are found.
-		c.JSON(204, gin.H{"message": "Nenhum aniversariante encontrado"})
+		c.JSON(200, gin.H{"message": "Nenhum aniversariante de vida encontrado hoje"})
 		return
 	}
 

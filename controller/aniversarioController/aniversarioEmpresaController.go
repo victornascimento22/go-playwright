@@ -28,7 +28,7 @@ func ConstructorIAniversarianteEmpresaServices(services services.IAniversarioEmp
 func (x *IAniversarioEmpresaServices) GetAniversarioEmpresaController() ([]models.Aniversariantes, error) {
 	aniversariantes, err := x.services.GetAniversariantesEmpresaService()
 	if err != nil {
-		panic("OI")
+		return nil, err
 	}
 	return aniversariantes, err
 }

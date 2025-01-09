@@ -2,6 +2,8 @@
 package handlers
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 	controller "gitlab.com/applications2285147/api-go/controller/aniversarioController"
 )
@@ -28,21 +30,25 @@ func ConstructorGetAniversarioEmpresaController(ctrl controller.IAniversarioEmpr
 // Handler processes HTTP requests for retrieving employee anniversaries.
 // c: the Gin context for the HTTP request.
 func (h *IAniversariantesEmpresaController) GetAniversariantesEmpresaHandler(c *gin.Context) {
-	// Call the controller to fetch anniversaries.
-	aniversariantes, err := h.controller.GetAniversarioEmpresaController()
 
+	log.Println("Iniciando busca de aniversariantes")
+
+	aniversariantes, err := h.controller.GetAniversarioEmpresaController()
 	if err != nil {
-		// Respond with a 500 status code and an error message if an error occurs.
-		c.JSON(500, gin.H{"error": "Erro ao buscar aniversariantes: " + err.Error()})
+		log.Printf("Erro ao buscar aniversariantes: %v", err)
+		c.JSON(500, gin.H{
+			"error":   "Erro ao buscar aniversariantes de empresa",
+			"details": err.Error(),
+		})
 		return
 	}
 
 	if len(aniversariantes) == 0 {
-		// Respond with a 204 status code if no anniversaries are found.
-		c.JSON(204, gin.H{"message": "Nenhum aniversariante encontrado"})
+		c.JSON(200, gin.H{
+			"message": "Nenhum aniversariante de empresa encontrado hoje",
+		})
 		return
 	}
 
-	// Respond with a 200 status code and the list of anniversaries if successful.
 	c.JSON(200, aniversariantes)
 }
