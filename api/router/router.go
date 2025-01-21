@@ -2,9 +2,10 @@
 package api
 
 import (
-	"database/sql"
 	"net/http"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	handler "gitlab.com/applications2285147/api-go/handlers"
 )
@@ -50,41 +51,35 @@ func NewRouterHandler(a *IAniversariantesHandler, s *IScreenshotHandler) *Router
 
 // Router sets up the HTTP routes for the anniversary-related endpoints.
 // db: Database connection used by the application.
-func (r *RouterHandler) Router(db *sql.DB) {
-	// Initialize the Gin router.
+func (r *RouterHandler) SetupRouter() *gin.Engine {
 	router := gin.Default()
+	// Configuração CORS
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
-	// Serve arquivos estáticos
+	// Configuração de rotas
 	router.LoadHTMLGlob("templates/*")
-
-	// Rota para o frontend
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
-	// Define a route group for anniversary-related endpoints.
+	// Rotas agrupadas
 	aniversario := router.Group("/aniversario")
 	{
-		// Define a GET endpoint to retrieve employee anniversaries.
-		aniversario.GET("/getAniversariosEmpresa", func(c *gin.Context) {
-			r.aniversariosHandler.empresaHandler.GetAniversariantesEmpresaHandler(c)
-		})
-
-		aniversario.GET("/getAniversariosVida", func(c *gin.Context) {
-			r.aniversariosHandler.vidaHandler.GetAniversariantesVidaHandler(c)
-		})
+		aniversario.GET("/getAniversariosEmpresa", r.aniversariosHandler.empresaHandler.GetAniversariantesEmpresaHandler)
+		aniversario.GET("/getAniversariosVida", r.aniversariosHandler.vidaHandler.GetAniversariantesVidaHandler)
 	}
 
 	screenshots := router.Group("/screenshots")
 	{
-		screenshots.POST("/getScreenshot", func(c *gin.Context) {
-			r.screenshotHandler.screenshotHandler.PostScreenshotHandler(c)
-		})
-		screenshots.POST("/update", func(c *gin.Context) {
-			r.screenshotHandler.screenshotHandler.UpdateDisplayHandler(c)
-		})
+		screenshots.POST("/update", r.screenshotHandler.screenshotHandler.UpdateScreenshotHandler)
 	}
 
-	// Start the HTTP server on port 8080.
-	router.Run(":8080")
+	return router
 }

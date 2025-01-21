@@ -5,161 +5,164 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sync"
-	"time"
 )
 
-type ImagePayload struct {
+type ScreenPayload struct {
 	Image          string `json:"image"`
 	Index          int    `json:"index"`
 	TransitionTime int    `json:"transition_time"`
 }
 
-const (
-	PORT         = "8081"
-	DISPLAY_PATH = "/home/loadt/raspberryclient/pi"
-)
+const PORT = "8081"
 
 var (
-	fehCmd         *exec.Cmd
-	fehMutex       sync.Mutex
-	currentIndex   int
-	imageCount     int
-	transitionTime int
-	stopTransition chan bool
+	imagemagickMutex sync.Mutex
+	fehCmd           *exec.Cmd
+	fehMutex         sync.Mutex
 )
 
-func init() {
-	os.MkdirAll(DISPLAY_PATH, 0755)
-	stopTransition = make(chan bool)
-}
-
-func startTransitions() {
-	log.Printf("🔄 Iniciando transições com intervalo de %d segundos", transitionTime)
-
-	// Para transição anterior se existir
-	select {
-	case stopTransition <- true:
-	default:
-	}
-	stopTransition = make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case <-stopTransition:
-				log.Printf("🛑 Transições interrompidas")
-				return
-			default:
-				showImage(currentIndex)
-				log.Printf("🔄 Próxima imagem em %d segundos", transitionTime)
-				currentIndex = (currentIndex + 1) % imageCount
-				time.Sleep(time.Duration(transitionTime) * time.Second)
-			}
-		}
-	}()
-}
-
-func showImage(index int) {
+// initFeh inicia o feh em modo slideshow
+func initFeh() error {
 	fehMutex.Lock()
 	defer fehMutex.Unlock()
 
-	// Mata processo anterior
-	if fehCmd != nil && fehCmd.Process != nil {
-		fehCmd.Process.Kill()
-		fehCmd.Wait() // Espera o processo terminar
+	// Mata qualquer instância existente do feh
+	if err := exec.Command("pkill", "feh").Run(); err != nil {
+		log.Printf("Erro ao matar instância do feh: %v", err)
 	}
 
-	imagePath := filepath.Join(DISPLAY_PATH, fmt.Sprintf("image_%d.png", index))
-
-	// Verifica se o arquivo existe
-	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
-		log.Printf("❌ Imagem não encontrada: %s", imagePath)
-		return
-	}
-
-	// Executa o feh com mais opções
+	// Inicia o feh em modo slideshow
 	fehCmd = exec.Command("feh",
-		"-F",                      // Tela cheia
-		"--hide-pointer",          // Esconde o cursor
-		"--auto-zoom",             // Ajusta zoom automaticamente
-		"--force-aliasing",        // Força melhor qualidade
-		"--quiet",                 // Reduz logs
-		"--on-last-slide", "hold", // Mantém última imagem
-		imagePath,
+		"-R", "1", // Recarrega a cada 1 segundo
+		"-F",      // Modo tela cheia
+		"-Z",      // Zoom automático
+		"-D", "5", // Delay padrão de 5 segundos
+		"-Y", // Esconde o cursor do mouse
+		"./", // Diretório atual
 	)
 
-	// Configura ambiente
-	fehCmd.Env = append(os.Environ(), "DISPLAY=:0")
-
-	// Captura saída de erro
-	var stderr bytes.Buffer
-	fehCmd.Stderr = &stderr
-
 	if err := fehCmd.Start(); err != nil {
-		log.Printf("❌ Erro ao exibir imagem %d: %v\nErro: %s\n", index, err, stderr.String())
-	} else {
-		log.Printf("✨ Exibindo imagem %d: %s\n", index, imagePath)
+		return fmt.Errorf("erro ao iniciar feh: %v", err)
 	}
+
+	return nil
+}
+
+func adjustImage(imageData []byte) ([]byte, error) {
+	imagemagickMutex.Lock()
+	defer imagemagickMutex.Unlock()
+
+	inputFile, err := ioutil.TempFile("", "input-*.png")
+	if err != nil {
+		return nil, fmt.Errorf("erro ao criar arquivo temporário de entrada: %v", err)
+	}
+	defer os.Remove(inputFile.Name())
+
+	outputFile, err := ioutil.TempFile("", "output-*.png")
+	if err != nil {
+		return nil, fmt.Errorf("erro ao criar arquivo temporário de saída: %v", err)
+	}
+	defer os.Remove(outputFile.Name())
+
+	if _, err := inputFile.Write(imageData); err != nil {
+		return nil, fmt.Errorf("erro ao escrever imagem no arquivo de entrada: %v", err)
+	}
+	inputFile.Close()
+
+	// Comando atualizado para remover bordas brancas e ajustar a imagem
+	cmd := exec.Command("convert",
+		inputFile.Name(),
+		"-trim",                // Remove as bordas brancas
+		"+repage",              // Redefine as coordenadas da imagem após o trim
+		"-background", "black", // Define fundo preto
+		"-gravity", "center", // Centraliza a imagem
+		"-resize", "1920x1080^", // Redimensiona cobrindo a área mínima
+		"-extent", "1920x1080", // Força o tamanho exato
+		"-flatten",          // Achata todas as camadas
+		"-compress", "JPEG", // Usa compressão JPEG
+		"-quality", "100", // Máxima qualidade
+		outputFile.Name(),
+	)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("erro ao executar ImageMagick: %v\n%s", err, stderr.String())
+	}
+
+	adjustedImage, err := ioutil.ReadFile(outputFile.Name())
+	if err != nil {
+		return nil, fmt.Errorf("erro ao ler imagem ajustada: %v", err)
+	}
+
+	return adjustedImage, nil
 }
 
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
-	log.Printf("📥 Recebendo requisição de %s", r.RemoteAddr)
+	log.Printf("Recebendo screenshot de %s", r.RemoteAddr)
 
-	var payload ImagePayload
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&payload); err != nil {
-		log.Printf("❌ Erro ao decodificar JSON: %v", err)
+	var payload ScreenPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		log.Printf("Erro ao decodificar JSON: %v", err)
 		http.Error(w, "Erro ao ler payload", http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("✅ Recebido payload: índice=%d, tempo=%ds", payload.Index, payload.TransitionTime)
+	log.Printf("Payload recebido: indice=%d, transicao=%ds",
+		payload.Index,
+		payload.TransitionTime,
+	)
 
-	// Decodifica a imagem de base64
 	imageBytes, err := base64.StdEncoding.DecodeString(payload.Image)
 	if err != nil {
-		log.Printf("❌ Erro ao decodificar imagem: %v", err)
+		log.Printf("Erro ao decodificar imagem: %v", err)
 		http.Error(w, "Erro ao decodificar imagem", http.StatusBadRequest)
 		return
 	}
 
-	// Salva a imagem
-	imagePath := filepath.Join(DISPLAY_PATH, fmt.Sprintf("image_%d.png", payload.Index))
-	if err := os.WriteFile(imagePath, imageBytes, 0644); err != nil {
-		log.Printf("❌ Erro ao salvar imagem: %v", err)
-		http.Error(w, "Erro ao salvar imagem", http.StatusInternalServerError)
+	adjustedImage, err := adjustImage(imageBytes)
+	if err != nil {
+		log.Printf("Erro ao ajustar imagem: %v", err)
+		http.Error(w, "Erro ao ajustar imagem", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("✅ Imagem salva em: %s", imagePath)
-
-	// Atualiza configurações
-	imageCount = payload.Index + 1
-	transitionTime = payload.TransitionTime
-
-	// Inicia transições se for a primeira imagem
-	if payload.Index == 0 {
-		currentIndex = 0
-		startTransitions()
+	outputPath := fmt.Sprintf("output-%d.png", payload.Index)
+	if err := ioutil.WriteFile(outputPath, adjustedImage, 0644); err != nil {
+		log.Printf("Erro ao salvar imagem ajustada: %v", err)
+		http.Error(w, "Erro ao salvar imagem ajustada", http.StatusInternalServerError)
+		return
 	}
 
+	log.Printf("Imagem ajustada salva em: %s", outputPath)
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Imagem recebida e processada com sucesso")
+	fmt.Fprintf(w, "Screenshot %d recebida, ajustada e salva com sucesso", payload.Index)
 }
 
-func handlePing(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	// Verifica se a aplicação está rodando (retorna true para online)
+	// Retorne false para offline se a aplicação não estiver rodando
+	isOnline := true // Ou false, dependendo do status da aplicação
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"online": isOnline})
 }
 
 func main() {
+	// Inicia o feh antes de começar o servidor
+	if err := initFeh(); err != nil {
+		log.Fatal(err)
+	}
+
+	// Define o handler para o webhook e status
 	http.HandleFunc("/webhook", handleWebhook)
-	http.HandleFunc("/ping", handlePing)
-	log.Printf("🚀 Webhook rodando em http://localhost:%s\n", PORT)
+	http.HandleFunc("/status", statusHandler)
+
+	log.Printf("Servidor rodando em http://localhost:%s\n", PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, nil))
 }

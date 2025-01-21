@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Monitor } from 'lucide-react'
+import { Monitor, RotateCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { displayService } from "@/services/api"
 import { UrlList } from "./url-list"
+import { StatusIndicator } from "./status-indicator"
+import { useUrlCycle } from "@/hooks/useUrlCycle"
 import type { TvCardProps, Url } from "@/types/tv"
 
 export function TvCard({ id, title, defaultIp }: TvCardProps) {
@@ -18,12 +20,27 @@ export function TvCard({ id, title, defaultIp }: TvCardProps) {
   const [raspberryIp, setRaspberryIp] = useState(defaultIp)
   const [urls, setUrls] = useState<Url[]>([{ url: "", source: "generic" }])
 
+  const { isRunning, currentUrlIndex, lastUpdate, startCycle, stopCycle, updateDisplay } = useUrlCycle({
+    id,
+    urls: urls.filter((url) => url.url.trim() !== ""),
+    transitionTime,
+    raspberryIp,
+    onError: (error) => {
+      toast({
+        title: "Erro no ciclo de URLs",
+        description: error,
+        variant: "destructive",
+      })
+    },
+  })
+
   const isValidIp = (ip: string) => {
-    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^localhost$/
+    const ipRegex =
+      /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^localhost$/
     return ipRegex.test(ip)
   }
 
-  async function handleUpdate() {
+  const handleUpdateUrls = async () => {
     if (!isValidIp(raspberryIp)) {
       toast({
         title: "IP Inválido",
@@ -33,7 +50,7 @@ export function TvCard({ id, title, defaultIp }: TvCardProps) {
       return
     }
 
-    if (urls.some(url => !url.url)) {
+    if (urls.some((url) => !url.url)) {
       toast({
         title: "URL Inválida",
         description: "Por favor, preencha todas as URLs",
@@ -44,20 +61,15 @@ export function TvCard({ id, title, defaultIp }: TvCardProps) {
 
     setIsLoading(true)
     try {
-      await displayService.updateDisplay({
-        urls,
-        transition_time: transitionTime,
-        raspberry_ip: raspberryIp,
-      })
-
+      await updateDisplay()
       toast({
-        title: "TV Atualizada",
+        title: "URLs Atualizadas",
         description: "As configurações foram atualizadas com sucesso",
       })
     } catch (error) {
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao atualizar TV",
+        description: error instanceof Error ? error.message : "Erro ao atualizar URLs",
         variant: "destructive",
       })
     } finally {
@@ -66,16 +78,23 @@ export function TvCard({ id, title, defaultIp }: TvCardProps) {
   }
 
   return (
-    <Card className="bg-slate-900/60 backdrop-blur-sm border-0 shadow-xl text-white h-full">
+    <Card className="border-0 shadow-xl text-white h-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Monitor className="h-5 w-5" />
-          {title}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Monitor className="h-5 w-5" />
+            {title}
+          </CardTitle>
+          <StatusIndicator isOnline={isRunning} isChecking={false} />
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 bg-slate-900/60 backdrop-blur-sm rounded-b-lg">
         <div className="space-y-2">
-          <UrlList urls={urls} onUrlChange={setUrls} />
+          <UrlList
+            urls={urls}
+            onUrlChange={setUrls}
+            onAniversarianteAdd={(url) => setUrls((current) => [...current, { url, source: "generic" }])}
+          />
         </div>
 
         <div className="pt-4 border-t border-white/10 space-y-4">
@@ -102,15 +121,28 @@ export function TvCard({ id, title, defaultIp }: TvCardProps) {
             />
           </div>
 
-          <Button 
-            className="w-full bg-white/10 hover:bg-white/20" 
-            onClick={handleUpdate}
-            disabled={isLoading}
-          >
-            {isLoading ? "Atualizando..." : "Atualizar TV"}
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={isRunning ? stopCycle : startCycle}>
+              {isRunning ? "Parar Ciclo" : "Iniciar Ciclo"}
+            </Button>
+            <Button className="bg-slate-600 hover:bg-slate-700" onClick={handleUpdateUrls} disabled={isLoading}>
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <RotateCw className="h-4 w-4 animate-spin" />
+                  Atualizando...
+                </span>
+              ) : (
+                "Atualizar URLs"
+              )}
+            </Button>
+          </div>
         </div>
+
+        {currentUrlIndex !== undefined && urls[currentUrlIndex] && (
+          <div className="pt-2 text-sm text-white/60">URL atual: {urls[currentUrlIndex].url}</div>
+        )}
       </CardContent>
     </Card>
   )
 }
+

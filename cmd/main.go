@@ -8,7 +8,8 @@ import (
 	"gitlab.com/applications2285147/api-go/database/repository"  // Import the repository package for database interaction.
 	"gitlab.com/applications2285147/api-go/handlers"             // Import the handlers package for business logic.
 	infra "gitlab.com/applications2285147/api-go/infrastructure" // Import the infrastructure package for database connection setup.
-	"gitlab.com/applications2285147/api-go/services"             // Import the services package for business logic.
+	"gitlab.com/applications2285147/api-go/infrastructure/queue"
+	"gitlab.com/applications2285147/api-go/services" // Import the services package for business logic.
 )
 
 func main() {
@@ -28,12 +29,16 @@ func main() {
 	aniversarioEmpresaService := services.ConstructorIAniversarioEmpresaRepositorys(repoAniversarioEmpresa)
 
 	// Step 3: Create the services
-	screenshotService := services.ConstructorScreenshotService()
+	screenshotService := &services.ScreenshotService{}
+
+	// Depois passe para o constructor do service
+	screenshotQueue := queue.NewScreenshotQueue(screenshotService)
+	screenshotServiceInstance := services.ConstructorScreenshotService(screenshotService, screenshotQueue)
 
 	// Step 4: Create the controllers
 	ctrlEmpresa := controller.ConstructorIAniversarianteEmpresaServices(aniversarioEmpresaService)
 	ctrlVida := controller.ConstructorAniversariantesVidaServices(aniversarioVidaService)
-	ctrlScreenshot := controllerScreenshot.ConstructorIScreenshotServices(screenshotService)
+	ctrlScreenshot := controllerScreenshot.ConstructorIScreenshotServices(screenshotServiceInstance)
 	// Step 5: Create the handlers
 	handlerEmpresa := handlers.ConstructorGetAniversarioEmpresaController(ctrlEmpresa)
 	handlerVida := handlers.ConstructorAniversariantesVidaController(ctrlVida)
@@ -44,11 +49,12 @@ func main() {
 	screenshotHandler := api.ConstructorScreenshotHandler(handlerScreenshot)
 
 	// Router setup
-	router := api.NewRouterHandler(
+	routerHandler := api.NewRouterHandler(
 		aniversariosHandler,
 		screenshotHandler,
 	)
 
-	router.Router(nil)
+	router := routerHandler.SetupRouter()
+	router.Run(":8080")
 
 }

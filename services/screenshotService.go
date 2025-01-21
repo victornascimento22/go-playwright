@@ -16,7 +16,9 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"gitlab.com/applications2285147/api-go/infrastructure/queue"
 	"gitlab.com/applications2285147/api-go/internal/models"
+	queueModels "gitlab.com/applications2285147/api-go/internal/queue"
 )
 
 // IScreenshotService define a interface para serviços de captura de screenshots
@@ -27,11 +29,39 @@ type IScreenshotService interface {
 	// Returns:
 	//   - screenshot: Imagem em bytes
 	//   - err: Erro, se houver
-	CaptureScreenshotService(body models.RequestBody) (screenshot []byte, err error)
+	//CaptureScreenshotService(body models.RequestBody) (screenshot []byte, err error)
 	CaptureScreenshotServicePBI(url string) (screenshot []byte, err error)
 	CaptureScreenshotServiceGeneric(body models.RequestBody) (screenshot []byte, err error)
 	SendToRaspberry(screenshot []byte, raspberryIP string) error
-	SendMultipleToRaspberry(config models.DisplayConfig) error
+	EnqueueScreenshot(url string, raspberryIP string, isPBI bool)
+}
+
+// ScreenshotService implementa a interface IScreenshotService
+type ScreenshotService struct {
+	services  IScreenshotService
+	queue     *queue.ScreenshotQueue
+	wsManager *WebSocketManager
+}
+
+// ConstructorScreenshotService creates a new instance of ScreenshotService
+// Returns:
+//   - IScreenshotService: New instance of the service
+func ConstructorScreenshotService(x IScreenshotService, queue *queue.ScreenshotQueue, wsManager *WebSocketManager) IScreenshotService {
+	return &ScreenshotService{
+		services:  x,
+		queue:     queue,
+		wsManager: wsManager,
+	}
+}
+
+// Metodo da interface
+func (s *ScreenshotService) CaptureScreenshotServicePBI(url string) (screenshot []byte, err error) {
+	return CaptureScreenshotServicePBI(url)
+}
+
+// metodo da interface
+func (s *ScreenshotService) CaptureScreenshotServiceGeneric(body models.RequestBody) (screenshot []byte, err error) {
+	return CaptureScreenshotServiceGeneric(body)
 }
 
 // CaptureScreenshotServicePBI implementação específica para Power BI (stub)
@@ -125,16 +155,6 @@ func CaptureScreenshotServiceGeneric(body models.RequestBody) (screenshot []byte
 	return screenshot, nil
 }
 
-// ScreenshotService implementa a interface IScreenshotService
-type ScreenshotService struct{}
-
-// ConstructorScreenshotService cria uma nova instância de ScreenshotService
-// Returns:
-//   - IScreenshotService: Nova instância do serviço
-func ConstructorScreenshotService() IScreenshotService {
-	return &ScreenshotService{}
-}
-
 // CaptureScreenshotService implementa o método da interface usando a função genérica
 // Params:
 //   - body: Contém a URL e parâmetros para captura
@@ -142,18 +162,26 @@ func ConstructorScreenshotService() IScreenshotService {
 // Returns:
 //   - screenshot: Imagem capturada em bytes
 //   - err: Erro, se houver
-func (s *ScreenshotService) CaptureScreenshotService(body models.RequestBody) (screenshot []byte, err error) {
-	return CaptureScreenshotServiceGeneric(body)
-}
 
 func (s *ScreenshotService) SendToRaspberry(screenshot []byte, raspberryIP string) error {
+	// Tenta primeiro via WebSocket
+	if conn, exists := s.wsManager.GetConnection(raspberryIP); exists {
+		log.Printf("📡 Enviando via WebSocket para %s", raspberryIP)
+		return conn.WriteJSON(map[string]interface{}{
+			"image":           base64.StdEncoding.EncodeToString(screenshot),
+			"index":           0,
+			"transition_time": 15,
+		})
+	}
+
+	// Fallback para HTTP se WebSocket não disponível
+	log.Printf("📤 Enviando via HTTP para %s", raspberryIP)
 	url := fmt.Sprintf("http://%s:8081/webhook", raspberryIP)
 
-	// Codifica a imagem em base64
+	// Seu código HTTP existente
 	base64Image := base64.StdEncoding.EncodeToString(screenshot)
-
 	payload := struct {
-		Image          string `json:"image"` // Mudamos para string (base64)
+		Image          string `json:"image"`
 		Index          int    `json:"index"`
 		TransitionTime int    `json:"transition_time"`
 	}{
@@ -180,63 +208,14 @@ func (s *ScreenshotService) SendToRaspberry(screenshot []byte, raspberryIP strin
 	return nil
 }
 
-func (s *ScreenshotService) SendMultipleToRaspberry(config models.DisplayConfig) error {
-	// Captura screenshots de todas as URLs
-	for i, urlConfig := range config.URLs {
-		var screenshot []byte
-		var err error
-
-		// Escolhe o método baseado no source de cada URL
-		if urlConfig.Source == "pbi" {
-			screenshot, err = CaptureScreenshotServicePBI(urlConfig.URL)
-		} else {
-			screenshot, err = CaptureScreenshotServiceGeneric(models.RequestBody{
-				Url: urlConfig.URL,
-			})
-		}
-
-		if err != nil {
-			return fmt.Errorf("erro ao capturar screenshot %d: %v", i+1, err)
-		}
-
-		// Codifica a imagem em base64
-		base64Image := base64.StdEncoding.EncodeToString(screenshot)
-
-		// Envia cada screenshot com seu índice
-		url := fmt.Sprintf("http://%s:8081/webhook", config.RaspberryIP)
-		payload := struct {
-			Image          string `json:"image"` // Mudamos para string (base64)
-			Index          int    `json:"index"`
-			TransitionTime int    `json:"transition_time"`
-		}{
-			Image:          base64Image,
-			Index:          i,
-			TransitionTime: config.TransitionTime,
-		}
-
-		// Envia para o webhook
-		jsonData, err := json.Marshal(payload)
-		if err != nil {
-			return fmt.Errorf("erro ao criar payload %d: %v", i+1, err)
-		}
-
-		resp, err := http.Post(url, "application/json", bytes.NewReader(jsonData))
-		if err != nil {
-			return fmt.Errorf("erro ao enviar screenshot %d: %v", i+1, err)
-		}
-		defer resp.Body.Close()
-
-		// Lê resposta
-		body, _ := io.ReadAll(resp.Body)
-		log.Printf("✅ Screenshot %d enviado. Resposta: %s", i+1, string(body))
+// Adicione este método na sua struct ScreenshotService
+func (s *ScreenshotService) EnqueueScreenshot(url string, raspberryIP string, isPBI bool) {
+	log.Printf("🔄 Enfileirando screenshot para TV: %s", raspberryIP)
+	request := queueModels.ScreenshotRequest{
+		URL:         url,
+		RaspberryIP: raspberryIP,
+		IsPBI:       isPBI,
 	}
-	return nil
-}
-
-func (s *ScreenshotService) CaptureScreenshotServicePBI(url string) (screenshot []byte, err error) {
-	return CaptureScreenshotServicePBI(url)
-}
-
-func (s *ScreenshotService) CaptureScreenshotServiceGeneric(body models.RequestBody) (screenshot []byte, err error) {
-	return CaptureScreenshotServiceGeneric(body)
+	s.queue.AddRequest(request)
+	log.Printf("✨ Request enfileirada com sucesso para TV: %s", raspberryIP)
 }

@@ -1,7 +1,15 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    domains: ['www.capitaltrade.srv.br', 'app.powerbi.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'www.capitaltrade.srv.br',
+        pathname: '/wp-content/uploads/**',
+      },
+    ],
+  },
+}
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-export default nextConfig;
+module.exports = nextConfig
