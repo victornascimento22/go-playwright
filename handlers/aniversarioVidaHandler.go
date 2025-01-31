@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
-	controller "gitlab.com/applications2285147/api-go/controller/aniversarioController"
+	controller "gitlab.com/applications2285147/api-go/controller"
 )
 
 type IAniversariantesVidaHandler interface {

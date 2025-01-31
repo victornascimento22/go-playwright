@@ -2,56 +2,52 @@
 package api
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	handler "gitlab.com/applications2285147/api-go/handlers"
+	"gitlab.com/applications2285147/api-go/handlers"
+	"gitlab.com/applications2285147/api-go/services"
 )
 
 // IAniversariantesEmpresaController encapsulates the controller logic for handling anniversary-related requests.
+type IRouter interface {
+	SetupRouter() (*gin.Engine, error)
+}
 
 type IAniversariantesHandler struct {
-	empresaHandler handler.IAniversariantesEmpresaHandler
-	vidaHandler    handler.IAniversariantesVidaHandler
+	AniversarioEmpresaHandler handlers.IAniversariantesEmpresaHandler
 }
+
 type IScreenshotHandler struct {
-	screenshotHandler handler.IScreenshotHandler
+	ScreenshotHandler handlers.IScreenshotHandler
 }
 
-// ConstructorGetAniversarioEmpresaController initializes the controller structure.
-// ctrl: An implementation of IAniversarioEmpresaController.
-// Returns an instance of IAniversariantesEmpresaController.
-func ConstructorAniversariantesHandler(handEmpresa handler.IAniversariantesEmpresaHandler,
-	handVida handler.IAniversariantesVidaHandler) *IAniversariantesHandler {
-	return &IAniversariantesHandler{
-		empresaHandler: handEmpresa,
-		vidaHandler:    handVida,
-	}
+type IWS struct {
+	WebsocketHandler *handlers.WebsocketHandlerImpl
 }
 
-func ConstructorScreenshotHandler(handScreenshot handler.IScreenshotHandler) *IScreenshotHandler {
-	return &IScreenshotHandler{
-		screenshotHandler: handScreenshot,
-	}
-}
-
+// RouterHandler manages the routes and their handlers.
 type RouterHandler struct {
-	aniversariosHandler *IAniversariantesHandler
-	screenshotHandler   *IScreenshotHandler
+	AniversariosHandler handlers.IAniversariantesEmpresaHandler
+	ScreenshotHandler   handlers.IScreenshotHandler
+	WebsocketHandler    *IWS
+	ScreenshotService   services.IScreenshotService
 }
 
-func NewRouterHandler(a *IAniversariantesHandler, s *IScreenshotHandler) *RouterHandler {
+// NewRouterHandler creates a new RouterHandler instance.
+func NewRouterHandler(a handlers.IAniversariantesEmpresaHandler, s handlers.IScreenshotHandler, w *IWS, ss services.IScreenshotService) *RouterHandler {
 	return &RouterHandler{
-		aniversariosHandler: a,
-		screenshotHandler:   s,
+		AniversariosHandler: a,
+		ScreenshotHandler:   s,
+		WebsocketHandler:    w,
+		ScreenshotService:   ss,
 	}
 }
 
 // Router sets up the HTTP routes for the anniversary-related endpoints.
 // db: Database connection used by the application.
-func (r *RouterHandler) SetupRouter() *gin.Engine {
+func (r *RouterHandler) SetupRouter() (*gin.Engine, error) {
 	router := gin.Default()
 	// Configuração CORS
 	router.Use(cors.New(cors.Config{
@@ -64,22 +60,31 @@ func (r *RouterHandler) SetupRouter() *gin.Engine {
 	}))
 
 	// Configuração de rotas
-	router.LoadHTMLGlob("templates/*")
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
-	})
-
 	// Rotas agrupadas
 	aniversario := router.Group("/aniversario")
 	{
-		aniversario.GET("/getAniversariosEmpresa", r.aniversariosHandler.empresaHandler.GetAniversariantesEmpresaHandler)
-		aniversario.GET("/getAniversariosVida", r.aniversariosHandler.vidaHandler.GetAniversariantesVidaHandler)
+		aniversario.GET("/getAniversariosEmpresa", r.AniversariosHandler.GetAniversariantesEmpresaHandler)
 	}
 
 	screenshots := router.Group("/screenshots")
 	{
-		screenshots.POST("/update", r.screenshotHandler.screenshotHandler.UpdateScreenshotHandler)
+		screenshots.POST("/update", r.ScreenshotHandler.UpdateScreenshotHandler)
 	}
 
-	return router
+	websockets := router.Group("/ws")
+	{
+		websockets.GET("/connect", r.WebsocketHandler.WebsocketHandler.WebsocketHandler)
+	}
+	return router, nil
+}
+
+// AniversariantesHandler implements the IAniversariantesEmpresaHandler interface.
+type AniversariantesHandler struct {
+	EmpresaHandler handlers.IAniversariantesEmpresaHandler
+	VidaHandler    handlers.IAniversariantesVidaHandler
+}
+
+// Ensure that AniversariantesHandler implements the IAniversariantesEmpresaHandler interface
+func (h *AniversariantesHandler) GetAniversariantesEmpresaHandler(c *gin.Context) {
+	h.EmpresaHandler.GetAniversariantesEmpresaHandler(c)
 }

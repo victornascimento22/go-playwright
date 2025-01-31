@@ -1,168 +1,119 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
+	"net/url"
 	"os"
-	"os/exec"
-	"sync"
+	"os/signal"
+
+	"github.com/gorilla/websocket"
 )
 
-type ScreenPayload struct {
-	Image          string `json:"image"`
-	Index          int    `json:"index"`
-	TransitionTime int    `json:"transition_time"`
+type Screenshot struct {
+	ImageData string `json:"imageData"` // Base64 da imagem
+	Url       string `json:"url"`       // URL original
 }
 
-const PORT = "8081"
-
-var (
-	imagemagickMutex sync.Mutex
-	fehCmd           *exec.Cmd
-	fehMutex         sync.Mutex
-)
-
-// initFeh inicia o feh em modo slideshow
-func initFeh() error {
-	fehMutex.Lock()
-	defer fehMutex.Unlock()
-
-	// Mata qualquer instância existente do feh
-	if err := exec.Command("pkill", "feh").Run(); err != nil {
-		log.Printf("Erro ao matar instância do feh: %v", err)
-	}
-
-	// Inicia o feh em modo slideshow
-	fehCmd = exec.Command("feh",
-		"-R", "1", // Recarrega a cada 1 segundo
-		"-F",      // Modo tela cheia
-		"-Z",      // Zoom automático
-		"-D", "5", // Delay padrão de 5 segundos
-		"-Y", // Esconde o cursor do mouse
-		"./", // Diretório atual
-	)
-
-	if err := fehCmd.Start(); err != nil {
-		return fmt.Errorf("erro ao iniciar feh: %v", err)
-	}
-
-	return nil
+type Message struct {
+	Action      string       `json:"action"`
+	IP          string       `json:"ip"`
+	Screenshots []Screenshot `json:"screenshots,omitempty"`
+	Interval    int          `json:"interval,omitempty"`
+	URLs        []string     `json:"urls"` // Removido "omitempty" para garantir que o campo nunca seja ignorado
 }
 
-func adjustImage(imageData []byte) ([]byte, error) {
-	imagemagickMutex.Lock()
-	defer imagemagickMutex.Unlock()
-
-	inputFile, err := ioutil.TempFile("", "input-*.png")
-	if err != nil {
-		return nil, fmt.Errorf("erro ao criar arquivo temporário de entrada: %v", err)
-	}
-	defer os.Remove(inputFile.Name())
-
-	outputFile, err := ioutil.TempFile("", "output-*.png")
-	if err != nil {
-		return nil, fmt.Errorf("erro ao criar arquivo temporário de saída: %v", err)
-	}
-	defer os.Remove(outputFile.Name())
-
-	if _, err := inputFile.Write(imageData); err != nil {
-		return nil, fmt.Errorf("erro ao escrever imagem no arquivo de entrada: %v", err)
-	}
-	inputFile.Close()
-
-	// Comando atualizado para remover bordas brancas e ajustar a imagem
-	cmd := exec.Command("convert",
-		inputFile.Name(),
-		"-trim",                // Remove as bordas brancas
-		"+repage",              // Redefine as coordenadas da imagem após o trim
-		"-background", "black", // Define fundo preto
-		"-gravity", "center", // Centraliza a imagem
-		"-resize", "1920x1080^", // Redimensiona cobrindo a área mínima
-		"-extent", "1920x1080", // Força o tamanho exato
-		"-flatten",          // Achata todas as camadas
-		"-compress", "JPEG", // Usa compressão JPEG
-		"-quality", "100", // Máxima qualidade
-		outputFile.Name(),
-	)
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("erro ao executar ImageMagick: %v\n%s", err, stderr.String())
-	}
-
-	adjustedImage, err := ioutil.ReadFile(outputFile.Name())
-	if err != nil {
-		return nil, fmt.Errorf("erro ao ler imagem ajustada: %v", err)
-	}
-
-	return adjustedImage, nil
-}
-
-func handleWebhook(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Recebendo screenshot de %s", r.RemoteAddr)
-
-	var payload ScreenPayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		log.Printf("Erro ao decodificar JSON: %v", err)
-		http.Error(w, "Erro ao ler payload", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("Payload recebido: indice=%d, transicao=%ds",
-		payload.Index,
-		payload.TransitionTime,
-	)
-
-	imageBytes, err := base64.StdEncoding.DecodeString(payload.Image)
-	if err != nil {
-		log.Printf("Erro ao decodificar imagem: %v", err)
-		http.Error(w, "Erro ao decodificar imagem", http.StatusBadRequest)
-		return
-	}
-
-	adjustedImage, err := adjustImage(imageBytes)
-	if err != nil {
-		log.Printf("Erro ao ajustar imagem: %v", err)
-		http.Error(w, "Erro ao ajustar imagem", http.StatusInternalServerError)
-		return
-	}
-
-	outputPath := fmt.Sprintf("output-%d.png", payload.Index)
-	if err := ioutil.WriteFile(outputPath, adjustedImage, 0644); err != nil {
-		log.Printf("Erro ao salvar imagem ajustada: %v", err)
-		http.Error(w, "Erro ao salvar imagem ajustada", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("Imagem ajustada salva em: %s", outputPath)
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Screenshot %d recebida, ajustada e salva com sucesso", payload.Index)
-}
-
-func statusHandler(w http.ResponseWriter, r *http.Request) {
-	// Verifica se a aplicação está rodando (retorna true para online)
-	// Retorne false para offline se a aplicação não estiver rodando
-	isOnline := true // Ou false, dependendo do status da aplicação
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"online": isOnline})
+type Response struct {
+	Action  string `json:"action"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+	IP      string `json:"ip"`
 }
 
 func main() {
-	// Inicia o feh antes de começar o servidor
-	if err := initFeh(); err != nil {
-		log.Fatal(err)
+	// Configurar log para incluir arquivo e número da linha
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	// Conecta ao servidor WebSocket na porta 8080
+	u := url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/ws/connect"}
+	log.Printf("🔗 Conectando ao servidor: %s", u.String())
+
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatal("❌ Erro ao conectar:", err)
+	}
+	defer c.Close()
+
+	// Registra o Raspberry
+	localIP := "127.0.0.1" // Ajuste para o IP do seu Raspberry
+	registerMsg := Message{
+		Action: "register",
+		IP:     localIP,
 	}
 
-	// Define o handler para o webhook e status
-	http.HandleFunc("/webhook", handleWebhook)
-	http.HandleFunc("/status", statusHandler)
+	err = c.WriteJSON(registerMsg)
+	if err != nil {
+		log.Fatal("❌ Erro ao registrar:", err)
+	}
 
-	log.Printf("Servidor rodando em http://localhost:%s\n", PORT)
-	log.Fatal(http.ListenAndServe(":"+PORT, nil))
+	log.Printf("✅ Registrado com sucesso usando IP: %s", localIP)
+
+	// Canal para controlar interrupção
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	// Canal para mensagens recebidas
+	done := make(chan struct{})
+
+	// Goroutine para ler mensagens
+	go func() {
+		defer close(done)
+		for {
+			var msg Message
+			err := c.ReadJSON(&msg)
+			if err != nil {
+				log.Println("❌ Erro ao ler mensagem:", err)
+				return
+			}
+
+			// 🔍 Log detalhado do JSON recebido
+			log.Printf("📩 JSON recebido: %+v", msg)
+
+			// Processa a ação recebida
+			switch msg.Action {
+			case "display_response":
+				log.Printf("📷 Recebido comando para exibir %d imagens", len(msg.URLs))
+
+				if len(msg.URLs) == 0 {
+					log.Println("⚠️ Nenhuma URL recebida!")
+				}
+
+				for i, url := range msg.URLs {
+					log.Printf("🖼️ Imagem %d: %s", i+1, url)
+					// Aqui você pode implementar a lógica para exibir a imagem
+				}
+
+			case "disconnect":
+				log.Println("🔌 Recebido comando para desconectar")
+				return
+
+			default:
+				log.Printf("⚠️ Ação desconhecida recebida: %s", msg.Action)
+			}
+		}
+	}()
+
+	// Aguarda sinal de interrupção
+	select {
+	case <-interrupt:
+		log.Println("🛑 Interrupção recebida, fechando conexão...")
+		err := c.WriteMessage(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+		)
+		if err != nil {
+			log.Printf("❌ Erro ao enviar mensagem de fechamento: %v", err)
+		}
+	case <-done:
+		log.Println("🔌 Conexão fechada pelo servidor")
+	}
 }

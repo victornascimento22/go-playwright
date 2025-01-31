@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
-	controller "gitlab.com/applications2285147/api-go/controller/screenshotControllers"
+	controller "gitlab.com/applications2285147/api-go/controller"
 )
 
 type IScreenshotHandler interface {
@@ -13,7 +13,7 @@ type IScreenshotController struct {
 	controller controller.IScreenshotController
 }
 
-func ConstructorScreenshotController(ctrl controller.IScreenshotController) *IScreenshotController {
+func ConstructorIScreenshotController(ctrl controller.IScreenshotController) *IScreenshotController {
 	return &IScreenshotController{
 		controller: ctrl,
 	}

@@ -1,14 +1,13 @@
-package queue
+package infra
 
 import (
 	"log"
 
 	"gitlab.com/applications2285147/api-go/internal/models"
-	"gitlab.com/applications2285147/api-go/internal/queue"
 )
 
-type ScreenshotQueue struct {
-	requests chan queue.ScreenshotRequest
+type IScreenshotQueue struct {
+	requests chan models.ScreenshotRequest
 	service  IScreenshotProcessor // interface para processar
 }
 
@@ -17,11 +16,12 @@ type IScreenshotProcessor interface {
 	CaptureScreenshotServicePBI(url string) ([]byte, error)
 	CaptureScreenshotServiceGeneric(body models.RequestBody) ([]byte, error)
 	SendToRaspberry(screenshot []byte, raspberryIP string) error
+	EnqueueScreenshot(url string, raspberryIP string, isPBI bool)
 }
 
-func NewScreenshotQueue(service IScreenshotProcessor) *ScreenshotQueue {
-	sq := &ScreenshotQueue{
-		requests: make(chan queue.ScreenshotRequest, 100),
+func NewScreenshotQueue(service IScreenshotProcessor) *IScreenshotQueue {
+	sq := &IScreenshotQueue{
+		requests: make(chan models.ScreenshotRequest, 100),
 		service:  service,
 	}
 	// Inicia o worker
@@ -29,16 +29,16 @@ func NewScreenshotQueue(service IScreenshotProcessor) *ScreenshotQueue {
 	return sq
 }
 
-func (sq *ScreenshotQueue) AddRequest(request queue.ScreenshotRequest) {
+func (sq *IScreenshotQueue) AddRequest(request models.ScreenshotRequest) {
 	log.Printf("📥 Adicionando request na fila para TV: %s", request.RaspberryIP)
 	sq.requests <- request
 }
 
-func (sq *ScreenshotQueue) GetRequests() chan queue.ScreenshotRequest {
+func (sq *IScreenshotQueue) GetRequests() chan models.ScreenshotRequest {
 	return sq.requests
 }
 
-func (sq *ScreenshotQueue) processRequests() {
+func (sq *IScreenshotQueue) processRequests() {
 	for request := range sq.requests {
 		log.Printf("⚙️ Processando da fila: TV %s, URL %s", request.RaspberryIP, request.URL)
 
@@ -67,4 +67,15 @@ func (sq *ScreenshotQueue) processRequests() {
 
 		log.Printf("✅ Processamento concluído para TV %s", request.RaspberryIP)
 	}
+}
+
+func (sq *IScreenshotQueue) EnqueueScreenshot(url string, raspberryIP string, isPBI bool) {
+	log.Printf("🔄 Enfileirando screenshot para TV: %s", raspberryIP)
+	request := models.ScreenshotRequest{
+		URL:         url,
+		RaspberryIP: raspberryIP,
+		IsPBI:       isPBI,
+	}
+	sq.AddRequest(request)
+	log.Printf("✨ Request enfileirada com sucesso para TV: %s", raspberryIP)
 }

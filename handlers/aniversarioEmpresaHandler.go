@@ -5,9 +5,10 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-	controller "gitlab.com/applications2285147/api-go/controller/aniversarioController"
+	controller "gitlab.com/applications2285147/api-go/controller"
 )
 
+// IAniversariantesEmpresaHandler encapsulates the logic for handling anniversary-related requests.
 type IAniversariantesEmpresaHandler interface {
 	GetAniversariantesEmpresaHandler(c *gin.Context)
 }
@@ -27,7 +28,7 @@ func ConstructorGetAniversarioEmpresaController(ctrl controller.IAniversarioEmpr
 	}
 }
 
-// Handler processes HTTP requests for retrieving employee anniversaries.
+// GetAniversariantesEmpresaHandler processes HTTP requests for retrieving employee anniversaries.
 // c: the Gin context for the HTTP request.
 func (h *IAniversariantesEmpresaController) GetAniversariantesEmpresaHandler(c *gin.Context) {
 
@@ -35,7 +36,7 @@ func (h *IAniversariantesEmpresaController) GetAniversariantesEmpresaHandler(c *
 
 	aniversariantes, err := h.controller.GetAniversarioEmpresaController()
 	if err != nil {
-		log.Printf("Erro ao buscar aniversariantes: %v", err)
+		log.Printf("Erro ao buscar aniversariantes12: %v", err)
 		c.JSON(500, gin.H{
 			"error":   "Erro ao buscar aniversariantes de empresa",
 			"details": err.Error(),
